@@ -129,6 +129,8 @@ h1, h2, h3 { font-family: var(--font-display); text-transform: uppercase; margin
 .rtabs button.out b { text-decoration: line-through; }
 .rbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
 .grid.isout { opacity: .45; }
+.bulk { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bulk button { border: 2px solid var(--c); background: var(--surface); border-radius: 12px; padding: 10px 8px; font-weight: 800; font-size: 14px; box-shadow: var(--shadow); }
 .picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .pick {
   border: 2px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 10px 12px;
@@ -642,6 +644,13 @@ function renderGame() {
       </div>
       <div class="rbar"><span>Tablero para adivinar a <b>${esc(g.tab)}</b></span>
         <button class="linkbtn" data-act="rout">${g.out.includes(g.tab) ? "Regresarlo al juego" : `Ya adivinamos a ${esc(g.tab)}`}</button></div>` : ""}
+      <div class="bulk">
+        ${["fam", "gym"].map(cat => {
+          const ids = g.order.filter(id => BY_ID[id].cat === cat);
+          const all = ids.every(id => down.includes(id));
+          return `<button data-act="bulk" data-v="${cat}" style="--c: var(--${cat})">${all ? "Subir" : "Bajar"} ${cat === "fam" ? "famosos" : "los del gym"}</button>`;
+        }).join("")}
+      </div>
       <p class="hint">Toca una cara para bajarla. Mantén presionado para ver sus rasgos.</p>
       <div class="grid ${g.modo === "todos" && g.out.includes(g.tab) ? "isout" : ""}" id="grid">
         ${g.order.map(id => {
@@ -934,6 +943,16 @@ app.addEventListener("click", e => {
     if (S.revealed) revealTimer = setTimeout(() => { S.revealed = false; if (S.screen === "game") render(); }, 5000);
   }
   else if (act === "resetboard") { curDown().length = 0; saveGame(); render(); }
+  else if (act === "bulk") {
+    const cat = el.dataset.v, down = curDown();
+    const ids = S.game.order.filter(id => BY_ID[id].cat === cat);
+    if (ids.every(id => down.includes(id))) {
+      for (const id of ids) down.splice(down.indexOf(id), 1);
+    } else {
+      ids.forEach(id => { if (!down.includes(id)) down.push(id); });
+    }
+    saveGame(); render();
+  }
   else if (act === "newsecret") { S.game.secret = pick(); saveGame(); render(); toast("Nuevo personaje secreto."); }
   else if (act === "finish") finish();
 });
