@@ -1,0 +1,874 @@
+<title>Adivina Quién Gym</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: una sola columna tipo app de celular. Piso de hule del gym + colores de discos olímpicos
+   (amarillo = famosos, azul = banda del gym, rojo = acción). */
+:root {
+  --bg: #e9ecf0;
+  --surface: #ffffff;
+  --surface-2: #f4f6f8;
+  --ink: #14171c;
+  --muted: #5a6270;
+  --line: #d3d8df;
+  --fam: #e7a900;
+  --fam-soft: #fff3cc;
+  --gym: #2a66cf;
+  --gym-soft: #dde8fb;
+  --accent: #df3a24;
+  --accent-ink: #ffffff;
+  --ok: #1f9d55;
+  --shadow: 0 1px 2px rgba(20,23,28,.08), 0 4px 14px rgba(20,23,28,.06);
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #1b1e24; --surface-2: #23272e; --ink: #eef1f5; --muted: #9ba4b2;
+    --line: #2e333b; --fam: #f4c02a; --fam-soft: #3a3115; --gym: #5b93f2; --gym-soft: #1b2a45;
+    --accent: #ff5b42; --accent-ink: #160805; --ok: #3ccf7f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #1b1e24; --surface-2: #23272e; --ink: #eef1f5; --muted: #9ba4b2;
+  --line: #2e333b; --fam: #f4c02a; --fam-soft: #3a3115; --gym: #5b93f2; --gym-soft: #1b2a45;
+  --accent: #ff5b42; --accent-ink: #160805; --ok: #3ccf7f;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1.2px);
+  background-size: 7px 7px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--gym); outline-offset: 2px; }
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 120px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-transform: uppercase; margin: 0; line-height: .95; text-wrap: balance; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* --- Portada --- */
+.brand { display: flex; align-items: center; gap: 14px; padding-top: 6px; }
+.plate {
+  flex: none; width: 64px; height: 64px; border-radius: 50%;
+  background: radial-gradient(circle, var(--bg) 0 15%, var(--ink) 16% 22%, var(--accent) 23% 100%);
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, #000 18%, var(--accent));
+  display: grid; place-items: center;
+}
+.brand h1 { font-size: clamp(38px, 11vw, 58px); font-weight: 900; letter-spacing: .01em; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 4px 0 0; color: var(--muted); font-weight: 600; font-size: 14px; }
+
+.section { display: flex; flex-direction: column; gap: 10px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.section-head h2 { font-size: 26px; font-weight: 800; }
+.linkbtn { background: none; border: 0; padding: 4px 2px; color: var(--gym); font-weight: 700; font-size: 14px; }
+
+.chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.chip {
+  border: 2px solid var(--line); background: var(--surface); border-radius: 12px;
+  padding: 10px 4px; font-weight: 700; font-size: 15px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode {
+  text-align: left; border: 0; border-radius: 16px; padding: 16px 14px 14px;
+  background: var(--surface); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; overflow: hidden;
+}
+.mode::after { content: ""; position: absolute; inset: auto 0 0 0; height: 6px; background: var(--c); }
+.mode h3 { font-size: 30px; font-weight: 900; }
+.mode p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.mode .go { margin-top: 6px; font-weight: 800; font-size: 13px; color: var(--c); text-transform: uppercase; letter-spacing: .08em; }
+.mode:disabled { opacity: .5; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* --- Pizarrón --- */
+.board-wod {
+  background: var(--surface); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 6px 14px; display: flex; flex-direction: column;
+}
+.row { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.rank { font-family: var(--font-display); font-weight: 900; font-size: 24px; color: var(--muted); text-align: center; }
+.row.lead .rank { color: var(--accent); }
+.who { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.who b { font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.tag { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--accent); color: var(--accent-ink); padding: 2px 6px; border-radius: 4px; }
+.bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar .b1 { background: var(--gym); }
+.bar .b2 { background: var(--fam); }
+.who small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.wins { font-family: var(--font-display); font-weight: 900; font-size: 34px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+.wins small { display: block; font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+.history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.history li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 8px 12px; background: var(--surface); border-radius: 10px; }
+.history li span:last-child { color: var(--muted); white-space: nowrap; }
+.empty { padding: 18px 4px; color: var(--muted); font-size: 14px; text-align: center; }
+.note { font-size: 12px; color: var(--muted); background: var(--surface-2); border-radius: 10px; padding: 8px 12px; margin: 0; }
+
+/* --- Juego --- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px);
+  margin-inline: -16px; padding: 10px 16px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.iconbtn { flex: none; width: 42px; height: 42px; border-radius: 12px; border: 0; background: var(--surface); box-shadow: var(--shadow); display: grid; place-items: center; }
+.iconbtn svg { width: 22px; height: 22px; }
+.topbar .ttl { flex: 1; min-width: 0; }
+.topbar .ttl b { display: block; font-family: var(--font-display); font-size: 22px; font-weight: 900; text-transform: uppercase; line-height: 1; }
+.topbar .ttl span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.counter { text-align: center; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 4px 10px; }
+.counter b { display: block; font-family: var(--font-display); font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.counter span { font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+
+.secret {
+  display: grid; grid-template-columns: 84px minmax(0,1fr); gap: 14px; align-items: center;
+  background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 12px;
+  border: 0; text-align: left; width: 100%;
+}
+.secret .pic { width: 84px; height: 84px; border-radius: 12px; overflow: hidden; position: relative; background: var(--surface-2); }
+.secret .pic svg { width: 100%; height: 100%; display: block; }
+.secret .cover {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, transparent 2px 7px), repeating-linear-gradient(-45deg, var(--ink) 0 2px, transparent 2px 7px), var(--accent);
+  color: #fff; font-family: var(--font-display); font-size: 34px; font-weight: 900;
+}
+.secret .cover span { width: 46px; height: 46px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; line-height: 1; }
+.secret .txt { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.secret .txt b { font-family: var(--font-display); font-size: 26px; font-weight: 900; text-transform: uppercase; line-height: 1; }
+.secret .txt span { font-size: 13px; color: var(--muted); }
+.traits { display: flex; flex-wrap: wrap; gap: 5px; }
+.traits em { font-style: normal; font-size: 11px; font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 3px 8px; }
+
+.grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; }
+@media (min-width: 560px) { .grid { grid-template-columns: repeat(6, minmax(0,1fr)); gap: 8px; } }
+.card {
+  border: 0; padding: 0; background: none; perspective: 600px; min-width: 0;
+  -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+.card .in { position: relative; display: block; aspect-ratio: 3 / 4.1; transition: transform .38s cubic-bezier(.3,.7,.3,1); transform-style: preserve-3d; }
+.card.down .in { transform: rotateY(180deg); }
+.face, .back {
+  position: absolute; inset: 0; border-radius: 9px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  display: flex; flex-direction: column; background: var(--surface); box-shadow: var(--shadow);
+}
+.face svg { width: 100%; aspect-ratio: 1; display: block; flex: none; }
+.face .nm {
+  flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: 9.5px; font-weight: 700; line-height: 1.1; padding: 2px 3px; min-height: 0;
+  border-top: 3px solid var(--c);
+}
+.face .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (min-width: 400px) { .face .nm { font-size: 10.5px; } }
+.back {
+  transform: rotateY(180deg);
+  background: repeating-linear-gradient(45deg, rgba(0,0,0,.22) 0 1.5px, transparent 1.5px 6px), repeating-linear-gradient(-45deg, rgba(0,0,0,.22) 0 1.5px, transparent 1.5px 6px), var(--c);
+  align-items: center; justify-content: flex-end; padding: 4px; opacity: .55;
+}
+.back span { font-size: 8.5px; font-weight: 700; color: #000; background: rgba(255,255,255,.75); border-radius: 4px; padding: 1px 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+}
+.dock .in { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+.btn { border: 0; border-radius: 14px; padding: 14px 12px; font-weight: 800; font-size: 15px; background: var(--surface); box-shadow: var(--shadow); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.dark { background: var(--ink); color: var(--bg); }
+.btn.block { width: 100%; }
+
+.holder { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow); padding: 20px 16px; }
+.holder .big { width: min(220px, 60vw); aspect-ratio: 1; border-radius: 18px; overflow: hidden; }
+.holder .big svg { width: 100%; height: 100%; display: block; }
+.holder h2 { font-size: 40px; font-weight: 900; }
+
+/* --- Galería --- */
+.tabs { display: flex; gap: 6px; }
+.tabs button { flex: 1; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px; font-weight: 700; }
+.tabs button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.gi { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 12px; align-items: center; background: var(--surface); border-radius: 14px; padding: 8px; border-left: 5px solid var(--c); }
+.gi svg { width: 64px; height: 64px; border-radius: 10px; display: block; }
+.gi b { display: block; font-size: 15px; }
+.gi small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+
+/* --- Hojas (modales) --- */
+.backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(8,10,14,.5); display: flex; align-items: flex-end; justify-content: center; animation: fade .18s ease; }
+.sheet {
+  width: 100%; max-width: 560px; background: var(--surface); border-radius: 22px 22px 0 0;
+  padding: 20px max(18px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 14px; animation: up .22s cubic-bezier(.3,.7,.3,1);
+  max-height: 88vh; overflow-y: auto;
+}
+.sheet h2 { font-size: 30px; font-weight: 900; }
+.sheet p { margin: 0; color: var(--muted); }
+.sheet .opts { display: flex; flex-direction: column; gap: 8px; }
+.sheet .chips { grid-template-columns: repeat(3, 1fr); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; font-weight: 700; color: var(--muted); }
+.field input { font: inherit; font-size: 16px; padding: 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface-2); color: var(--ink); }
+.detail { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 16px; align-items: center; }
+.detail svg { width: 120px; height: 120px; border-radius: 14px; display: block; }
+.detail h2 { font-size: 30px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30;
+  background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 600;
+  display: flex; gap: 14px; align-items: center; max-width: calc(100% - 32px); box-shadow: var(--shadow); animation: up .2s ease;
+}
+.toast button { background: none; border: 0; color: var(--fam); font-weight: 800; padding: 0; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes up { from { transform: translateY(24px); opacity: 0; } }
+.toast { animation-name: toastup; }
+@keyframes toastup { from { transform: translate(-50%, 16px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div id="app" class="wrap"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ===================== Personajes ===================== */
+// t: s=sexo, p=piel(0-3), h=peinado, c=color de pelo, b=barba, l=lentes, g=gorra, a=aretes,
+//    tt=tatuajes, cic=cicatriz, f=fleco, lab=labios rojos, sc=sin cuello
+const CHARS = [
+  // --- Famosos ---
+  { id: "badbunny", n: "Bad Bunny", cat: "fam", d: "Cantante", t: { s: "H", p: 2, h: "corto", c: "negro", b: "corta", l: "sol", a: 1, tt: 1 } },
+  { id: "shakira", n: "Shakira", cat: "fam", d: "Cantante", t: { s: "M", p: 1, h: "rizado", c: "rubio" } },
+  { id: "pesopluma", n: "Peso Pluma", cat: "fam", d: "Cantante", t: { s: "H", p: 1, h: "mullet", c: "rubio", b: "bigote", tt: 1, a: 1 } },
+  { id: "karolg", n: "Karol G", cat: "fam", d: "Cantante", t: { s: "M", p: 1, h: "largo", c: "rojo", lab: 1 } },
+  { id: "luismiguel", n: "Luis Miguel", cat: "fam", d: "Cantante", t: { s: "H", p: 1, h: "engomado", c: "castano" } },
+  { id: "taylor", n: "Taylor Swift", cat: "fam", d: "Cantante", t: { s: "M", p: 0, h: "largo", c: "rubio", f: 1, lab: 1 } },
+  { id: "canelo", n: "Canelo Álvarez", cat: "fam", d: "Boxeador", t: { s: "H", p: 0, h: "corto", c: "pelirrojo", b: "completa" } },
+  { id: "salma", n: "Salma Hayek", cat: "fam", d: "Actriz", t: { s: "M", p: 1, h: "largo", c: "negro", lab: 1 } },
+  { id: "checo", n: "Checo Pérez", cat: "fam", d: "Piloto de F1", t: { s: "H", p: 1, h: "corto", c: "castano", b: "corta", g: 1 } },
+  { id: "belinda", n: "Belinda", cat: "fam", d: "Cantante y actriz", t: { s: "M", p: 0, h: "largo", c: "platinado", a: 1 } },
+  { id: "laroca", n: "La Roca", cat: "fam", d: "Actor y luchador", t: { s: "H", p: 2, h: "pelon", b: "candado", tt: 1 } },
+  { id: "dualipa", n: "Dua Lipa", cat: "fam", d: "Cantante", t: { s: "M", p: 1, h: "largo", c: "negro", f: 1, a: 1 } },
+  { id: "derbez", n: "Eugenio Derbez", cat: "fam", d: "Actor y comediante", t: { s: "H", p: 1, h: "corto", c: "canoso", b: "completa" } },
+  { id: "nodal", n: "Christian Nodal", cat: "fam", d: "Cantante", t: { s: "H", p: 1, h: "corto", c: "negro", b: "bigote", tt: 1, g: 1 } },
+  { id: "ariana", n: "Ariana Grande", cat: "fam", d: "Cantante", t: { s: "M", p: 0, h: "coleta", c: "castano" } },
+  // --- Banda del gym ---
+  { id: "archivista", n: "Archivista", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "chongo", c: "castano", l: "normal" } },
+  { id: "drgymshark", n: "Doctora Gymshark", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "coleta", c: "rubio", a: 1 } },
+  { id: "dafne", n: "Dafne", cat: "gym", d: "Del gym", t: { s: "M", p: 2, h: "chongo", c: "negro", a: 1 } },
+  { id: "apestoso", n: "El apestoso de las telas", cat: "gym", d: "Del gym", t: { s: "H", p: 1, h: "manbun", c: "castano", b: "completa" } },
+  { id: "calzonuda", n: "La calzonuda", cat: "gym", d: "Del gym", t: { s: "M", p: 0, h: "bob", c: "pelirrojo" } },
+  { id: "elarchivista", n: "El Archivista", cat: "gym", d: "Del gym", t: { s: "H", p: 0, h: "corto", c: "castano", l: "normal", b: "bigote" } },
+  { id: "paloma", n: "La paloma", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "largo", c: "canoso", l: "sol" } },
+  { id: "venenito", n: "La venenito", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "bob", c: "verde", tt: 1, a: 1 } },
+  { id: "lenia", n: "Lenia", cat: "gym", d: "Del gym", t: { s: "M", p: 2, h: "rizado", c: "castano" } },
+  { id: "natyudico", n: "Nat Yudico", cat: "gym", d: "Del gym", t: { s: "M", p: 0, h: "largo", c: "rubio", g: 1 } },
+  { id: "chiquilin", n: "Chiquilin", cat: "gym", d: "Del gym", t: { s: "H", p: 2, h: "rapado", c: "negro", g: 1 } },
+  { id: "adame", n: "Alfredo Adame", cat: "gym", d: "Del gym", t: { s: "H", p: 0, h: "engomado", c: "canoso", b: "bigote" } },
+  { id: "scarface", n: "Scarface", cat: "gym", d: "Del gym", t: { s: "H", p: 1, h: "engomado", c: "negro", cic: 1 } },
+  { id: "bruno", n: "Bruno", cat: "gym", d: "Del gym", t: { s: "H", p: 1, h: "rizado", c: "castano", b: "completa" } },
+  { id: "sincuello", n: "La sincuello", cat: "gym", d: "Del gym", t: { s: "M", p: 2, h: "corto", c: "morado", tt: 1, sc: 1 } },
+];
+const BY_ID = Object.fromEntries(CHARS.map(c => [c.id, c]));
+const DEFAULT_PLAYERS = ["Yordi", "Richi", "Pau", "Jugador 4"];
+
+/* ===================== Avatares (SVG) ===================== */
+const SKIN = ["#f5d6bd", "#e4b48f", "#c3885d", "#8a5636"];
+const SKIN_D = ["#e2b598", "#cc9670", "#a66f47", "#6f4229"];
+const HAIR = { negro: "#2a211e", castano: "#6a4127", rubio: "#e0b552", pelirrojo: "#c2552a", canoso: "#c9c6bf", rojo: "#d42c47", verde: "#33a866", morado: "#8a4ccf", platinado: "#eee6d2" };
+const BGS = ["#ffe7a8", "#ffd2c4", "#cfe6ff", "#d7f3df", "#eadcff", "#ffe0ef", "#d9f1f5", "#f3e9d6", "#e3e8ee", "#fbe3c8"];
+const SHIRTS = ["#2a66cf", "#df3a24", "#1f9d55", "#14171c", "#e7a900", "#7b4fd6", "#0f8b8d", "#e0569b", "#5a6270", "#f07c2a"];
+
+function avatar(ch) {
+  const t = ch.t, i = CHARS.indexOf(ch);
+  const sk = SKIN[t.p], skd = SKIN_D[t.p];
+  const hair = HAIR[t.c] || "#2a211e";
+  const brow = t.h === "pelon" ? "#3a2a22" : (t.c === "canoso" || t.c === "platinado" ? "#9d988f" : hair);
+  const bg = BGS[(i * 3) % BGS.length], shirt = SHIRTS[(i * 7) % SHIRTS.length];
+  const capCol = SHIRTS[(i * 5 + 3) % SHIRTS.length];
+  let s = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="${bg}"/>`;
+
+  // Pelo de atrás
+  if (t.h === "largo") s += `<path d="M27 46 Q25 19 50 18 Q75 19 73 46 L77 88 Q50 95 23 88Z" fill="${hair}"/>`;
+  if (t.h === "bob") s += `<path d="M27 46 Q25 19 50 18 Q75 19 73 46 L75 69 Q50 74 25 69Z" fill="${hair}"/>`;
+  if (t.h === "mullet") s += `<path d="M30 48 L27 74 Q50 67 73 74 L70 48Z" fill="${hair}"/>`;
+  if (t.h === "coleta") s += `<path d="M64 24 Q90 20 86 50 Q84 66 75 76 Q79 56 69 34Z" fill="${hair}"/>`;
+  if (t.h === "rizado") {
+    for (let a = 190; a <= 350; a += 20) {
+      const r = a * Math.PI / 180;
+      s += `<circle cx="${(50 + 25 * Math.cos(r)).toFixed(1)}" cy="${(44 + 25 * Math.sin(r)).toFixed(1)}" r="9" fill="${hair}"/>`;
+    }
+    const bottom = t.s === "M" ? 82 : 52;
+    for (let y = 46; y <= bottom; y += 9) s += `<circle cx="26" cy="${y}" r="8.5" fill="${hair}"/><circle cx="74" cy="${y}" r="8.5" fill="${hair}"/>`;
+  }
+
+  // Cuerpo
+  if (t.sc) {
+    s += t.tt
+      ? `<path d="M8 100 Q10 66 50 64 Q90 66 92 100Z" fill="${sk}"/><path d="M33 100 L35 74 Q50 80 65 74 L67 100Z" fill="${shirt}"/>`
+      : `<path d="M8 100 Q10 66 50 64 Q90 66 92 100Z" fill="${shirt}"/>`;
+  } else {
+    s += `<rect x="43" y="62" width="14" height="17" rx="4" fill="${skd}"/>`;
+    s += t.tt
+      ? `<path d="M12 100 Q14 77 50 75 Q86 77 88 100Z" fill="${sk}"/><path d="M34 100 L36 79 Q50 86 64 79 L66 100Z" fill="${shirt}"/>`
+      : `<path d="M12 100 Q14 77 50 75 Q86 77 88 100Z" fill="${shirt}"/>`;
+  }
+  if (t.tt) {
+    const ty = t.sc ? 82 : 88;
+    s += `<g stroke="#1d2433" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".8">
+      <path d="M19 ${ty} l4 -5 l4 5 l-4 5z"/><path d="M17 ${ty + 8} h12"/>
+      <circle cx="78" cy="${ty}" r="3.2"/><path d="M74 ${ty + 7} q4 -3 8 0"/></g>`;
+  }
+
+  // Orejas, cara
+  s += `<circle cx="30" cy="50" r="5" fill="${sk}"/><circle cx="70" cy="50" r="5" fill="${sk}"/>`;
+  s += `<ellipse cx="50" cy="48" rx="20" ry="23" fill="${sk}"/>`;
+  if (t.a) s += `<circle cx="29.5" cy="57" r="2.3" fill="#f2c94c" stroke="#b8902a" stroke-width=".6"/><circle cx="70.5" cy="57" r="2.3" fill="#f2c94c" stroke="#b8902a" stroke-width=".6"/>`;
+
+  // Pelo de enfrente
+  if (!t.g) {
+    switch (t.h) {
+      case "corto": case "mullet":
+        s += `<path d="M29 46 Q27 20 50 20 Q73 20 71 46 Q69 33 60 30 Q50 34 38 31 Q31 35 29 46Z" fill="${hair}"/>`; break;
+      case "rapado":
+        s += `<path d="M30 42 Q30 24 50 24 Q70 24 70 42 Q64 30 50 30 Q36 30 30 42Z" fill="${hair}" opacity=".55"/>`; break;
+      case "pelon":
+        s += `<ellipse cx="42" cy="31" rx="6" ry="2.6" fill="#fff" opacity=".35"/>`; break;
+      case "largo": case "bob":
+        s += t.f
+          ? `<path d="M29 46 Q27 19 50 19 Q73 19 71 46 Q68 38 50 39 Q32 38 29 46Z" fill="${hair}"/>`
+          : `<path d="M29 48 Q26 19 50 19 Q74 19 71 48 Q68 30 53 28 Q46 36 34 38 Q31 42 29 48Z" fill="${hair}"/>`; break;
+      case "chongo":
+        s += `<circle cx="50" cy="17" r="8.5" fill="${hair}"/><path d="M30 44 Q29 22 50 22 Q71 22 70 44 Q66 30 50 29 Q34 30 30 44Z" fill="${hair}"/>`; break;
+      case "coleta":
+        s += `<path d="M30 44 Q29 22 50 22 Q71 22 70 44 Q66 30 50 29 Q34 30 30 44Z" fill="${hair}"/>`; break;
+      case "manbun":
+        s += `<circle cx="50" cy="18" r="6.5" fill="${hair}"/><path d="M29 46 Q27 22 50 22 Q73 22 71 46 Q68 32 50 30 Q32 32 29 46Z" fill="${hair}"/>`; break;
+      case "engomado":
+        s += `<path d="M29 44 Q27 18 52 19 Q74 21 71 44 Q70 30 58 27 Q44 26 34 32 Q30 37 29 44Z" fill="${hair}"/><path d="M38 25 Q50 21 62 24" stroke="#fff" opacity=".35" stroke-width="1.6" fill="none"/>`; break;
+      case "rizado":
+        for (let a = 205; a <= 335; a += 26) {
+          const r = a * Math.PI / 180;
+          s += `<circle cx="${(50 + 20 * Math.cos(r)).toFixed(1)}" cy="${(45 + 20 * Math.sin(r)).toFixed(1)}" r="6.5" fill="${hair}"/>`;
+        }
+        break;
+    }
+  } else if (t.h === "largo" || t.h === "bob") {
+    s += `<path d="M29 48 Q29 36 33 34 L67 34 Q71 36 71 48 Q66 38 50 38 Q34 38 29 48Z" fill="${hair}"/>`;
+  }
+
+  // Cejas, ojos, nariz
+  s += `<path d="M37.5 41 q4.5 -3 9 0 M53.5 41 q4.5 -3 9 0" stroke="${brow}" stroke-width="2.2" stroke-linecap="round" fill="none"/>`;
+  s += `<circle cx="42" cy="48" r="2.6" fill="#1d1b1a"/><circle cx="58" cy="48" r="2.6" fill="#1d1b1a"/>`;
+  if (t.s === "M") s += `<path d="M38.5 46 l-2 -1.6 M61.5 46 l2 -1.6" stroke="#1d1b1a" stroke-width="1.3" stroke-linecap="round"/>`;
+  s += `<path d="M50 50 q-3 6 0.5 7" stroke="${skd}" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
+
+  // Barba
+  const bc = t.h === "pelon" ? "#2a211e" : hair;
+  if (t.b === "completa" || t.b === "corta") {
+    s += `<path d="M30 49 Q31 75 50 76 Q69 75 70 49 Q66 64 58 63 Q50 60 42 63 Q34 64 30 49Z" fill="${bc}" opacity="${t.b === "corta" ? .5 : 1}"/>`;
+    s += `<ellipse cx="50" cy="61.5" rx="6.5" ry="3.4" fill="${sk}"/>`;
+  }
+  if (t.b === "candado") {
+    s += `<path d="M40.5 57.5 Q50 53.5 59.5 57.5 L60 66 Q50 75 40 66Z" fill="${bc}"/><ellipse cx="50" cy="61.5" rx="6.5" ry="3.2" fill="${sk}"/>`;
+  }
+  // Boca
+  s += t.lab
+    ? `<path d="M44 60.5 q6 5.5 12 0 q-6 1.6 -12 0Z" fill="#c8243c"/>`
+    : `<path d="M44.5 60 q5.5 4.5 11 0" stroke="#7a3b2e" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  if (t.b === "bigote") s += `<path d="M40.5 58.5 Q50 51.5 59.5 58.5 Q55 61 50 58.6 Q45 61 40.5 58.5Z" fill="${bc}"/>`;
+
+  // Cicatriz
+  if (t.cic) s += `<g stroke="#9c2f2f" stroke-width="1.8" stroke-linecap="round"><path d="M56 51 L67 63"/><path d="M58.6 55.6 l3 -2.4 M61.4 58.8 l3 -2.4 M64.2 62 l3 -2.4" stroke-width="1.2"/></g>`;
+
+  // Lentes
+  if (t.l === "normal") s += `<g stroke="#1d1b1a" stroke-width="1.8" fill="rgba(255,255,255,.28)"><circle cx="42" cy="48" r="6.3"/><circle cx="58" cy="48" r="6.3"/><path d="M48.3 47.5 h3.4 M35.7 47 l-5 -1.5 M64.3 47 l5 -1.5" fill="none"/></g>`;
+  if (t.l === "sol") s += `<g fill="#15171a"><rect x="33.5" y="43" width="14.5" height="10" rx="4"/><rect x="52" y="43" width="14.5" height="10" rx="4"/><rect x="47" y="45" width="6" height="2"/></g><path d="M33.5 46 l-3.5 -1 M66.5 46 l3.5 -1" stroke="#15171a" stroke-width="1.6"/><path d="M36 45.5 l4 0" stroke="#fff" stroke-width="1.2" opacity=".5"/>`;
+
+  // Gorra
+  if (t.g) {
+    s += `<path d="M28 41 Q28 17 50 17 Q72 17 72 41Z" fill="${capCol}"/><path d="M50 17 L50 41" stroke="rgba(0,0,0,.18)" stroke-width="1.2"/><circle cx="50" cy="17.5" r="1.8" fill="rgba(0,0,0,.25)"/>`;
+    s += `<path d="M25 41 Q50 34 75 41 Q79 45 74 46 Q50 41 26 46 Q21 45 25 41Z" fill="${capCol}" stroke="rgba(0,0,0,.25)" stroke-width="1"/>`;
+  }
+  return s + `</svg>`;
+}
+
+const HAIR_TXT = { pelon: "Pelón", rapado: "Rapado", corto: "Pelo corto", largo: "Pelo largo", rizado: "Pelo chino", chongo: "Chongo", coleta: "Cola de caballo", mullet: "Mullet", bob: "Melena corta", engomado: "Engomado", manbun: "Chonguito" };
+const COLOR_TXT = { negro: "Pelo negro", castano: "Pelo castaño", rubio: "Rubio", pelirrojo: "Pelirrojo", canoso: "Canoso", rojo: "Pelo rojo", verde: "Pelo verde", morado: "Pelo morado", platinado: "Platinado" };
+function traitsOf(ch) {
+  const t = ch.t, out = [ch.cat === "fam" ? "Famoso" : "Del gym", t.s === "H" ? "Hombre" : "Mujer", HAIR_TXT[t.h]];
+  if (t.c && t.h !== "pelon") out.push(COLOR_TXT[t.c]);
+  if (t.f) out.push("Fleco");
+  if (t.b) out.push({ corta: "Barba corta", completa: "Barba", candado: "Candado", bigote: "Bigote" }[t.b]);
+  if (t.l) out.push(t.l === "sol" ? "Lentes de sol" : "Lentes");
+  if (t.g) out.push("Gorra");
+  if (t.a) out.push("Aretes");
+  if (t.tt) out.push("Tatuajes");
+  if (t.cic) out.push("Cicatriz");
+  if (t.lab) out.push("Labios rojos");
+  if (t.sc) out.push("Sin cuello");
+  return out;
+}
+const AV = {}; CHARS.forEach(c => { AV[c.id] = avatar(c); });
+
+/* ===================== Estado ===================== */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const S = {
+  screen: "home",
+  me: LS.get("aq_me", null),
+  players: LS.get("aq_players", DEFAULT_PLAYERS),
+  game: LS.get("aq_game", null),
+  galTab: "all",
+  partidas: [],
+  shared: false,      // true cuando el marcador compartido está conectado
+  localPartidas: LS.get("aq_local", []),
+  revealed: false,
+};
+if (S.game) S.screen = "game";
+let DB = null;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = sel => document.querySelector(sel);
+const app = $("#app");
+const ICON = {
+  back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
+  eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
+};
+
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function pick() { return CHARS[Math.floor(Math.random() * CHARS.length)].id; }
+function saveGame() { LS.set("aq_game", S.game); }
+function ago(ts) {
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return "ahorita";
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "ayer" : `hace ${d} días`;
+}
+
+/* ===================== Render: inicio ===================== */
+function renderHome() {
+  const list = S.shared ? S.partidas : S.localPartidas;
+  const stats = {};
+  S.players.forEach(p => { stats[p] = { w: 0, a: 0, b: 0 }; });
+  list.forEach(g => {
+    if (!g || !g.ganador) return;
+    stats[g.ganador] = stats[g.ganador] || { w: 0, a: 0, b: 0 };
+    stats[g.ganador].w++;
+    if (g.modo === "1v1") stats[g.ganador].a++; else stats[g.ganador].b++;
+  });
+  const rows = Object.entries(stats).sort((x, y) => y[1].w - x[1].w || x[0].localeCompare(y[0]));
+  const max = Math.max(1, ...rows.map(r => r[1].w));
+  const topW = rows.length ? rows[0][1].w : 0;
+
+  app.innerHTML = `
+    <header class="brand">
+      <div class="plate" aria-hidden="true"></div>
+      <div>
+        <h1>Adivina <span>Quién</span></h1>
+        <p>Famosos × la banda del gym · 30 caras</p>
+      </div>
+    </header>
+
+    <section class="section" aria-labelledby="h-yo">
+      <div class="section-head"><h2 id="h-yo">¿Quién eres?</h2><button class="linkbtn" data-act="names">Editar nombres</button></div>
+      <div class="chips">
+        ${S.players.map(p => `<button class="chip" data-act="me" data-v="${esc(p)}" aria-pressed="${S.me === p}">${esc(p)}</button>`).join("")}
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="h-modo">
+      <div class="section-head"><h2 id="h-modo">Jugar</h2></div>
+      <div class="modes">
+        <button class="mode" style="--c: var(--gym)" data-act="start1v1" ${S.me ? "" : "disabled"}>
+          <span class="eyebrow">Parejas</span>
+          <h3>1 vs 1</h3>
+          <p>Cada quien con su cel y su personaje secreto. Pregunten por turnos y bajen caras.</p>
+          <span class="go">Empezar →</span>
+        </button>
+        <button class="mode" style="--c: var(--fam)" data-act="startGroup" ${S.me ? "" : "disabled"}>
+          <span class="eyebrow">Todos juntos</span>
+          <h3>Uno vs todos</h3>
+          <p>Uno tiene el personaje y los demás preguntan. El primero que adivina gana.</p>
+          <span class="go">Empezar →</span>
+        </button>
+      </div>
+      ${S.me ? "" : `<p class="hint">Primero toca tu nombre arriba.</p>`}
+    </section>
+
+    <section class="section" aria-labelledby="h-piz">
+      <div class="section-head"><h2 id="h-piz">Pizarrón</h2>
+        <div class="legend"><span style="--c: var(--gym)">1 vs 1</span><span style="--c: var(--fam)">Grupal</span></div>
+      </div>
+      <div class="board-wod">
+        ${rows.map(([name, st], i) => `
+          <div class="row ${st.w > 0 && st.w === topW ? "lead" : ""}">
+            <div class="rank">${i + 1}</div>
+            <div class="who">
+              <b>${esc(name)} ${st.w > 0 && st.w === topW ? `<span class="tag">Líder</span>` : ""}</b>
+              <div class="bar"><i class="b1" style="width:${st.a / max * 100}%"></i><i class="b2" style="width:${st.b / max * 100}%"></i></div>
+              <small>1 vs 1: ${st.a} · Grupal: ${st.b}</small>
+            </div>
+            <div class="wins">${st.w}<small>${st.w === 1 ? "VICTORIA" : "VICTORIAS"}</small></div>
+          </div>`).join("")}
+      </div>
+      ${S.shared ? "" : `<p class="note">El marcador se está guardando solo en este cel. Para que sea compartido, abre el juego con tu cuenta de Claude desde el link que te compartieron.</p>`}
+      ${list.length ? `<ul class="history">${list.slice(0, 6).map(g => `
+        <li><span><b>${esc(g.ganador)}</b> ganó${g.rival ? ` a ${esc(g.rival)}` : ""} · ${g.modo === "1v1" ? "1 vs 1" : "Grupal"}</span><span>${ago(g.ts)}</span></li>`).join("")}</ul>`
+        : `<div class="empty">Todavía no hay partidas. La primera victoria abre el pizarrón.</div>`}
+    </section>
+
+    <section class="section">
+      <button class="btn block" data-act="gallery">Ver los 30 personajes</button>
+    </section>`;
+}
+
+/* ===================== Render: juego ===================== */
+function renderGame() {
+  const g = S.game;
+  const holder = g.modo === "grupal" && g.rol === "tiene";
+  const sec = g.secret ? BY_ID[g.secret] : null;
+  const left = g.order.length - g.down.length;
+  const sub = g.modo === "1v1" ? `contra ${esc(g.rival)}` : (holder ? "tú tienes el personaje" : "tú adivinas");
+
+  let body = "";
+  if (holder) {
+    body = `
+      <div class="holder">
+        <span class="eyebrow">Tu personaje secreto</span>
+        <div class="big">${AV[sec.id]}</div>
+        <h2>${esc(sec.n)}</h2>
+        <div class="traits">${traitsOf(sec).map(x => `<em>${esc(x)}</em>`).join("")}</div>
+        <p class="hint">Contesta sí o no a lo que te pregunten. Que nadie vea tu pantalla.</p>
+      </div>
+      <button class="btn block" data-act="gallery">Ver a todos para comparar</button>`;
+  } else {
+    body = `
+      ${sec ? `
+      <button class="secret" data-act="reveal" aria-label="Ver u ocultar tu personaje secreto">
+        <div class="pic">${AV[sec.id]}${S.revealed ? "" : `<div class="cover"><span>?</span></div>`}</div>
+        <div class="txt">
+          <span class="eyebrow">Tu personaje secreto</span>
+          ${S.revealed
+            ? `<b>${esc(sec.n)}</b><div class="traits">${traitsOf(sec).slice(1).map(x => `<em>${esc(x)}</em>`).join("")}</div>`
+            : `<b>Toca para ver</b><span>Se vuelve a tapar solo en 5 segundos.</span>`}
+        </div>
+      </button>` : ""}
+      <p class="hint">Toca una cara para bajarla. Mantén presionado para ver sus rasgos.</p>
+      <div class="grid" id="grid">
+        ${g.order.map(id => {
+          const c = BY_ID[id];
+          return `<button class="card ${g.down.includes(id) ? "down" : ""}" data-id="${id}" style="--c: var(--${c.cat})" aria-label="${esc(c.n)}" aria-pressed="${g.down.includes(id)}">
+            <span class="in">
+              <span class="face">${AV[id]}<span class="nm"><span>${esc(c.n)}</span></span></span>
+              <span class="back"><span>${esc(c.n)}</span></span>
+            </span></button>`;
+        }).join("")}
+      </div>`;
+  }
+
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="iconbtn" data-act="leave" aria-label="Salir al inicio">${ICON.back}</button>
+      <div class="ttl"><b>${g.modo === "1v1" ? "1 vs 1" : "Uno vs todos"}</b><span>${esc(S.me)} · ${sub}</span></div>
+      ${holder ? "" : `<div class="counter" aria-live="polite"><b id="left">${left}</b><span>QUEDAN</span></div>`}
+    </div>
+    ${body}
+    <div class="dock"><div class="in">
+      <button class="btn" data-act="${holder ? "newsecret" : "resetboard"}">${holder ? "Otro personaje" : "Levantar todas"}</button>
+      <button class="btn primary" data-act="finish">Terminar partida</button>
+    </div></div>`;
+}
+
+/* ===================== Render: galería ===================== */
+function renderGallery() {
+  const tab = S.galTab;
+  const list = CHARS.filter(c => tab === "all" || c.cat === tab);
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="iconbtn" data-act="galback" aria-label="Regresar">${ICON.back}</button>
+      <div class="ttl"><b>Los 30 personajes</b><span>15 famosos · 15 del gym</span></div>
+    </div>
+    <div class="tabs" role="group" aria-label="Filtrar">
+      <button data-act="tab" data-v="all" aria-pressed="${tab === "all"}">Todos</button>
+      <button data-act="tab" data-v="fam" aria-pressed="${tab === "fam"}">Famosos</button>
+      <button data-act="tab" data-v="gym" aria-pressed="${tab === "gym"}">Del gym</button>
+    </div>
+    <div class="gal">
+      ${list.map(c => `<div class="gi" style="--c: var(--${c.cat})">${AV[c.id]}<div style="min-width:0"><b>${esc(c.n)}</b><small>${esc(c.d)}</small>
+        <div class="traits">${traitsOf(c).slice(1).map(x => `<em>${esc(x)}</em>`).join("")}</div></div></div>`).join("")}
+    </div>`;
+}
+
+function render() {
+  if (S.screen === "game" && S.game) renderGame();
+  else if (S.screen === "gallery") renderGallery();
+  else { S.screen = "home"; renderHome(); }
+}
+
+/* ===================== Hojas y avisos ===================== */
+function sheet(html, onClick) {
+  closeSheet();
+  const b = document.createElement("div");
+  b.className = "backdrop"; b.id = "backdrop";
+  b.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  b.addEventListener("click", e => {
+    if (e.target === b) return closeSheet();
+    const btn = e.target.closest("[data-s]");
+    if (btn) onClick && onClick(btn.dataset.s, btn, b);
+  });
+  document.body.appendChild(b);
+  const f = b.querySelector("input, button"); if (f) f.focus({ preventScroll: true });
+}
+function closeSheet() { const b = $("#backdrop"); if (b) b.remove(); }
+let toastTimer;
+function toast(msg, actLabel, act) {
+  const old = $(".toast"); if (old) old.remove();
+  clearTimeout(toastTimer);
+  const t = document.createElement("div");
+  t.className = "toast"; t.setAttribute("role", "status");
+  t.innerHTML = `<span>${esc(msg)}</span>${actLabel ? `<button>${esc(actLabel)}</button>` : ""}`;
+  if (actLabel) t.querySelector("button").onclick = () => { t.remove(); act(); };
+  document.body.appendChild(t);
+  toastTimer = setTimeout(() => t.remove(), actLabel ? 7000 : 3500);
+}
+
+function showDetail(id) {
+  const c = BY_ID[id];
+  sheet(`
+    <div class="detail">${AV[id]}<div style="min-width:0"><span class="eyebrow">${c.cat === "fam" ? "Famoso" : "Del gym"} · ${esc(c.d)}</span><h2>${esc(c.n)}</h2></div></div>
+    <div class="traits">${traitsOf(c).slice(1).map(x => `<em>${esc(x)}</em>`).join("")}</div>
+    <button class="btn dark block" data-s="close">Cerrar</button>`, () => closeSheet());
+}
+
+/* ===================== Acciones ===================== */
+function newGame(modo, extra) {
+  S.game = Object.assign({ modo, order: shuffle(CHARS.map(c => c.id)), down: [], secret: null, ts: Date.now() }, extra);
+  if (modo === "1v1" || extra.rol === "tiene") S.game.secret = pick();
+  S.revealed = false;
+  saveGame();
+  S.screen = "game";
+  render();
+  window.scrollTo(0, 0);
+}
+
+function start1v1() {
+  const rivals = S.players.filter(p => p !== S.me);
+  sheet(`
+    <span class="eyebrow">1 vs 1</span>
+    <h2>¿Contra quién?</h2>
+    <p>A cada uno le toca un personaje al azar en su cel. Tu rival también debe abrir 1 vs 1 en el suyo.</p>
+    <div class="chips">${rivals.map(p => `<button class="chip" data-s="rival" data-v="${esc(p)}">${esc(p)}</button>`).join("")}</div>
+    <button class="btn block" data-s="close">Cancelar</button>`,
+    (act, btn) => {
+      if (act === "close") return closeSheet();
+      closeSheet(); newGame("1v1", { rival: btn.dataset.v });
+    });
+}
+
+function startGroup() {
+  sheet(`
+    <span class="eyebrow">Uno vs todos</span>
+    <h2>¿Qué te toca?</h2>
+    <p>Solo una persona tiene el personaje. Los demás eligen "Yo adivino".</p>
+    <div class="opts">
+      <button class="btn dark block" data-s="tiene">Yo tengo el personaje</button>
+      <button class="btn primary block" data-s="adivina">Yo adivino</button>
+      <button class="btn block" data-s="close">Cancelar</button>
+    </div>`,
+    act => {
+      if (act === "close") return closeSheet();
+      closeSheet(); newGame("grupal", { rol: act });
+    });
+}
+
+function finish() {
+  const g = S.game;
+  const holder = g.modo === "grupal" && g.rol === "tiene";
+  const winLabel = holder ? "Gané: nadie adivinó" : (g.modo === "1v1" ? `Gané yo, no ${g.rival}` : "Gané: adiviné primero");
+  const loseLabel = holder ? "Alguien adivinó" : "Perdí";
+  sheet(`
+    <span class="eyebrow">Fin de la partida</span>
+    <h2>¿Cómo te fue?</h2>
+    <p>Solo el ganador registra la victoria en su cel, para que no se cuente doble.</p>
+    <div class="opts">
+      <button class="btn primary block" data-s="win">${esc(winLabel)}</button>
+      <button class="btn dark block" data-s="lose">${esc(loseLabel)}</button>
+      <button class="btn block" data-s="close">Seguir jugando</button>
+    </div>`,
+    act => {
+      if (act === "close") return closeSheet();
+      closeSheet();
+      if (act === "win") recordWin();
+      else { endGame(); toast(holder ? "Que el que adivinó registre su victoria." : "Ni modo. Que el ganador lo registre en su cel."); }
+    });
+}
+
+function endGame() { S.game = null; saveGame(); S.screen = "home"; render(); window.scrollTo(0, 0); }
+
+async function recordWin() {
+  const g = S.game;
+  const rec = { ganador: S.me, rival: g.modo === "1v1" ? g.rival : null, modo: g.modo, personaje: g.secret || null, ts: Date.now() };
+  endGame();
+  if (S.shared && DB) {
+    try {
+      const ref = await DB.collection("partidas").add(rec);
+      toast(`¡Victoria para ${S.me}!`, "Deshacer", async () => {
+        try { await ref.delete(); toast("Victoria borrada."); } catch { toast("No se pudo borrar. Inténtalo otra vez."); }
+      });
+      return;
+    } catch (e) {
+      toast("No se pudo guardar en el pizarrón compartido. Se guardó en este cel.");
+    }
+  }
+  rec.id = "l" + rec.ts;
+  S.localPartidas = [rec, ...S.localPartidas].slice(0, 300);
+  LS.set("aq_local", S.localPartidas);
+  render();
+  if (!S.shared) toast(`¡Victoria para ${S.me}!`, "Deshacer", () => {
+    S.localPartidas = S.localPartidas.filter(x => x.id !== rec.id);
+    LS.set("aq_local", S.localPartidas); render();
+  });
+}
+
+function editNames() {
+  sheet(`
+    <span class="eyebrow">Jugadores</span>
+    <h2>Nombres</h2>
+    ${S.players.map((p, i) => `<div class="field"><label for="pn${i}">Jugador ${i + 1}</label><input id="pn${i}" maxlength="16" value="${esc(p)}" autocomplete="off"></div>`).join("")}
+    <p>Cambiar un nombre no cambia las victorias que ya están en el pizarrón.</p>
+    <div class="opts">
+      <button class="btn primary block" data-s="save">Guardar</button>
+      <button class="btn block" data-s="close">Cancelar</button>
+    </div>`,
+    async (act, btn, b) => {
+      if (act === "close") return closeSheet();
+      const names = S.players.map((p, i) => (b.querySelector("#pn" + i).value || "").trim() || p);
+      if (new Set(names).size !== names.length) return toast("Hay dos nombres iguales. Cambia uno.");
+      const oldMe = S.me, idx = S.players.indexOf(oldMe);
+      S.players = names; LS.set("aq_players", names);
+      if (idx >= 0) { S.me = names[idx]; LS.set("aq_me", S.me); }
+      closeSheet(); render();
+      if (S.shared && DB) {
+        try { await DB.doc("config/jugadores").set({ nombres: names }); toast("Nombres guardados para todos."); }
+        catch { toast("Se guardaron solo en este cel."); }
+      }
+    });
+}
+
+let revealTimer;
+app.addEventListener("click", e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const card = e.target.closest(".card");
+  if (card && S.game) {
+    const id = card.dataset.id, g = S.game;
+    const i = g.down.indexOf(id);
+    if (i >= 0) g.down.splice(i, 1); else g.down.push(id);
+    card.classList.toggle("down", i < 0);
+    card.setAttribute("aria-pressed", String(i < 0));
+    const l = $("#left"); if (l) l.textContent = g.order.length - g.down.length;
+    saveGame();
+    return;
+  }
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === "me") { S.me = el.dataset.v; LS.set("aq_me", S.me); render(); }
+  else if (act === "names") editNames();
+  else if (act === "start1v1") start1v1();
+  else if (act === "startGroup") startGroup();
+  else if (act === "gallery") { S.prev = S.screen; S.screen = "gallery"; render(); window.scrollTo(0, 0); }
+  else if (act === "galback") { S.screen = S.prev === "game" && S.game ? "game" : "home"; render(); window.scrollTo(0, 0); }
+  else if (act === "tab") { S.galTab = el.dataset.v; render(); }
+  else if (act === "leave") {
+    sheet(`<h2>¿Salir de la partida?</h2><p>Se borra tu tablero y no se registra nada.</p>
+      <div class="opts"><button class="btn primary block" data-s="yes">Salir</button><button class="btn block" data-s="close">Seguir jugando</button></div>`,
+      a => { closeSheet(); if (a === "yes") endGame(); });
+  }
+  else if (act === "reveal") {
+    S.revealed = !S.revealed; render();
+    clearTimeout(revealTimer);
+    if (S.revealed) revealTimer = setTimeout(() => { S.revealed = false; if (S.screen === "game") render(); }, 5000);
+  }
+  else if (act === "resetboard") { S.game.down = []; saveGame(); render(); }
+  else if (act === "newsecret") { S.game.secret = pick(); saveGame(); render(); toast("Nuevo personaje secreto."); }
+  else if (act === "finish") finish();
+});
+
+// Mantener presionado una cara = ver rasgos
+let pressTimer, suppressClick = false, pressStart = null;
+app.addEventListener("pointerdown", e => {
+  const card = e.target.closest(".card"); if (!card) return;
+  pressStart = { x: e.clientX, y: e.clientY };
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => { suppressClick = true; showDetail(card.dataset.id); if (navigator.vibrate) try { navigator.vibrate(15); } catch {} }, 480);
+});
+app.addEventListener("pointermove", e => {
+  if (pressStart && Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 10) clearTimeout(pressTimer);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => app.addEventListener(ev, () => { clearTimeout(pressTimer); pressStart = null; }));
+app.addEventListener("contextmenu", e => { if (e.target.closest(".card")) e.preventDefault(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+render();
+
+/* ===================== Marcador compartido ===================== */
+(async () => {
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const db = await window.claude.use("db");
+    if (!db) return;
+    DB = db;
+    let loaded = false;
+    const timer = setTimeout(() => { if (!loaded) { S.shared = false; render(); } }, 10000);
+    db.collection("partidas").orderBy("ts", "desc").limit(500).onSnapshot(snap => {
+      loaded = true; clearTimeout(timer);
+      S.shared = true;
+      S.partidas = snap.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
+      if (S.screen === "home") render();
+    }, () => { clearTimeout(timer); S.shared = false; if (S.screen === "home") render(); });
+    db.doc("config/jugadores").onSnapshot(snap => {
+      if (!snap.exists) return;
+      const n = snap.data().nombres;
+      if (Array.isArray(n) && n.length && n.every(x => typeof x === "string" && x.trim())) {
+        const idx = S.players.indexOf(S.me);
+        S.players = n.slice(0, 8).map(x => x.trim().slice(0, 16));
+        LS.set("aq_players", S.players);
+        if (S.me && !S.players.includes(S.me) && idx >= 0 && S.players[idx]) { S.me = S.players[idx]; LS.set("aq_me", S.me); }
+        if (S.screen === "home") render();
+      }
+    }, () => {});
+  } catch (e) { /* sin marcador compartido: el juego sigue funcionando en este cel */ }
+})();
+})();
+</script>
