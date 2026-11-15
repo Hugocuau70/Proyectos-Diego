@@ -118,6 +118,17 @@ h1, h2, h3 { font-family: var(--font-display); text-transform: uppercase; margin
 .bar i { display: block; height: 100%; }
 .bar .b1 { background: var(--gym); }
 .bar .b2 { background: var(--fam); }
+.bar .b3 { background: var(--accent); }
+.mode.wide { grid-column: 1 / -1; }
+.rtabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.rtabs button { border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.rtabs button b { font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtabs button span { font-size: 11px; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rtabs button[aria-selected="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.rtabs button[aria-selected="true"] span { color: inherit; opacity: .85; }
+.rtabs button.out b { text-decoration: line-through; }
+.rbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.grid.isout { opacity: .45; }
 .who small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .wins { font-family: var(--font-display); font-weight: 900; font-size: 34px; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
 .wins small { display: block; font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
@@ -278,7 +289,6 @@ const CHARS = [
   { id: "nodal", n: "Christian Nodal", cat: "fam", d: "Cantante", t: { s: "H", p: 1, h: "corto", c: "negro", b: "bigote", tt: 1, g: 1 } },
   { id: "ariana", n: "Ariana Grande", cat: "fam", d: "Cantante", t: { s: "M", p: 0, h: "coleta", c: "castano" } },
   // --- Banda del gym ---
-  { id: "archivista", n: "Archivista", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "chongo", c: "castano", l: "normal" } },
   { id: "drgymshark", n: "Doctora Gymshark", cat: "gym", d: "Del gym", t: { s: "M", p: 1, h: "coleta", c: "rubio", a: 1 } },
   { id: "dafne", n: "Dafne", cat: "gym", d: "Del gym", t: { s: "M", p: 2, h: "chongo", c: "negro", a: 1 } },
   { id: "apestoso", n: "El apestoso de las telas", cat: "gym", d: "Del gym", t: { s: "H", p: 1, h: "manbun", c: "castano", b: "completa" } },
@@ -296,6 +306,10 @@ const CHARS = [
 ];
 const BY_ID = Object.fromEntries(CHARS.map(c => [c.id, c]));
 const DEFAULT_PLAYERS = ["Yordi", "Richi", "Pau", "Jugador 4"];
+const NF = CHARS.filter(c => c.cat === "fam").length, NG = CHARS.length - NF;
+const MODE_TXT = { "1v1": "1 vs 1", grupal: "Grupal", todos: "Todos contra todos" };
+const MODE_TITLE = { "1v1": "1 vs 1", grupal: "Uno vs todos", todos: "Todos vs todos" };
+function joinNames(a) { return a.length <= 1 ? (a[0] || "") : a.slice(0, -1).join(", ") + " y " + a[a.length - 1]; }
 
 /* ===================== Avatares (SVG) ===================== */
 const SKIN = ["#f5d6bd", "#e4b48f", "#c3885d", "#8a5636"];
@@ -452,7 +466,13 @@ const S = {
   localPartidas: LS.get("aq_local", []),
   revealed: false,
 };
+if (S.game && (!Array.isArray(S.game.order) || !S.game.order.every(id => BY_ID[id]) || (S.game.secret && !BY_ID[S.game.secret]))) { S.game = null; LS.set("aq_game", null); }
 if (S.game) S.screen = "game";
+function curDown() {
+  const g = S.game;
+  if (g.modo === "todos") { g.boards[g.tab] = g.boards[g.tab] || []; return g.boards[g.tab]; }
+  return g.down;
+}
 let DB = null;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -480,12 +500,14 @@ function ago(ts) {
 function renderHome() {
   const list = S.shared ? S.partidas : S.localPartidas;
   const stats = {};
-  S.players.forEach(p => { stats[p] = { w: 0, a: 0, b: 0 }; });
+  S.players.forEach(p => { stats[p] = { w: 0, a: 0, b: 0, c: 0 }; });
   list.forEach(g => {
     if (!g || !g.ganador) return;
-    stats[g.ganador] = stats[g.ganador] || { w: 0, a: 0, b: 0 };
+    stats[g.ganador] = stats[g.ganador] || { w: 0, a: 0, b: 0, c: 0 };
     stats[g.ganador].w++;
-    if (g.modo === "1v1") stats[g.ganador].a++; else stats[g.ganador].b++;
+    if (g.modo === "1v1") stats[g.ganador].a++;
+    else if (g.modo === "todos") stats[g.ganador].c++;
+    else stats[g.ganador].b++;
   });
   const rows = Object.entries(stats).sort((x, y) => y[1].w - x[1].w || x[0].localeCompare(y[0]));
   const max = Math.max(1, ...rows.map(r => r[1].w));
@@ -496,7 +518,7 @@ function renderHome() {
       <div class="plate" aria-hidden="true"></div>
       <div>
         <h1>Adivina <span>Quién</span></h1>
-        <p>Famosos × la banda del gym · 30 caras</p>
+        <p>Famosos × la banda del gym · ${CHARS.length} caras</p>
       </div>
     </header>
 
@@ -522,13 +544,19 @@ function renderHome() {
           <p>Uno tiene el personaje y los demás preguntan. El primero que adivina gana.</p>
           <span class="go">Empezar →</span>
         </button>
+        <button class="mode wide" style="--c: var(--accent)" data-act="startAll" ${S.me ? "" : "disabled"}>
+          <span class="eyebrow">Battle royale</span>
+          <h3>Todos contra todos</h3>
+          <p>Cada quien tiene su personaje y un tablero para cada rival. Todos pueden adivinar el de todos. Si te adivinan, quedas fuera. El último que quede gana.</p>
+          <span class="go">Empezar →</span>
+        </button>
       </div>
       ${S.me ? "" : `<p class="hint">Primero toca tu nombre arriba.</p>`}
     </section>
 
     <section class="section" aria-labelledby="h-piz">
       <div class="section-head"><h2 id="h-piz">Pizarrón</h2>
-        <div class="legend"><span style="--c: var(--gym)">1 vs 1</span><span style="--c: var(--fam)">Grupal</span></div>
+        <div class="legend"><span style="--c: var(--gym)">1 vs 1</span><span style="--c: var(--fam)">Grupal</span><span style="--c: var(--accent)">Todos</span></div>
       </div>
       <div class="board-wod">
         ${rows.map(([name, st], i) => `
@@ -536,20 +564,20 @@ function renderHome() {
             <div class="rank">${i + 1}</div>
             <div class="who">
               <b>${esc(name)} ${st.w > 0 && st.w === topW ? `<span class="tag">Líder</span>` : ""}</b>
-              <div class="bar"><i class="b1" style="width:${st.a / max * 100}%"></i><i class="b2" style="width:${st.b / max * 100}%"></i></div>
-              <small>1 vs 1: ${st.a} · Grupal: ${st.b}</small>
+              <div class="bar"><i class="b1" style="width:${st.a / max * 100}%"></i><i class="b2" style="width:${st.b / max * 100}%"></i><i class="b3" style="width:${st.c / max * 100}%"></i></div>
+              <small>1 vs 1: ${st.a} · Grupal: ${st.b} · Todos: ${st.c}</small>
             </div>
             <div class="wins">${st.w}<small>${st.w === 1 ? "VICTORIA" : "VICTORIAS"}</small></div>
           </div>`).join("")}
       </div>
       ${S.shared ? "" : `<p class="note">El marcador se está guardando solo en este cel. Para que sea compartido, abre el juego con tu cuenta de Claude desde el link que te compartieron.</p>`}
       ${list.length ? `<ul class="history">${list.slice(0, 6).map(g => `
-        <li><span><b>${esc(g.ganador)}</b> ganó${g.rival ? ` a ${esc(g.rival)}` : ""} · ${g.modo === "1v1" ? "1 vs 1" : "Grupal"}</span><span>${ago(g.ts)}</span></li>`).join("")}</ul>`
+        <li><span><b>${esc(g.ganador)}</b> ganó${g.rival ? ` a ${esc(g.rival)}` : (Array.isArray(g.rivales) && g.rivales.length ? ` a ${esc(joinNames(g.rivales))}` : "")} · ${MODE_TXT[g.modo] || "Grupal"}</span><span>${ago(g.ts)}</span></li>`).join("")}</ul>`
         : `<div class="empty">Todavía no hay partidas. La primera victoria abre el pizarrón.</div>`}
     </section>
 
     <section class="section">
-      <button class="btn block" data-act="gallery">Ver los 30 personajes</button>
+      <button class="btn block" data-act="gallery">Ver los ${CHARS.length} personajes</button>
     </section>`;
 }
 
@@ -558,8 +586,11 @@ function renderGame() {
   const g = S.game;
   const holder = g.modo === "grupal" && g.rol === "tiene";
   const sec = g.secret ? BY_ID[g.secret] : null;
-  const left = g.order.length - g.down.length;
-  const sub = g.modo === "1v1" ? `contra ${esc(g.rival)}` : (holder ? "tú tienes el personaje" : "tú adivinas");
+  const down = holder ? [] : curDown();
+  const left = g.order.length - down.length;
+  const sub = g.modo === "1v1" ? `contra ${esc(g.rival)}`
+    : g.modo === "todos" ? `contra ${esc(joinNames(g.rivales))}`
+    : (holder ? "tú tienes el personaje" : "tú adivinas");
 
   let body = "";
   if (holder) {
@@ -584,11 +615,20 @@ function renderGame() {
             : `<b>Toca para ver</b><span>Se vuelve a tapar solo en 5 segundos.</span>`}
         </div>
       </button>` : ""}
+      ${g.modo === "todos" ? `
+      <div class="rtabs" role="tablist" aria-label="Tablero de cada rival">
+        ${g.rivales.map(r => {
+          const out = g.out.includes(r), n = g.order.length - (g.boards[r] || []).length;
+          return `<button role="tab" data-act="rtab" data-v="${esc(r)}" aria-selected="${g.tab === r}" class="${out ? "out" : ""}"><b>${esc(r)}</b><span>${out ? "Fuera" : "Quedan " + n}</span></button>`;
+        }).join("")}
+      </div>
+      <div class="rbar"><span>Tablero para adivinar a <b>${esc(g.tab)}</b></span>
+        <button class="linkbtn" data-act="rout">${g.out.includes(g.tab) ? "Regresarlo al juego" : `Ya adivinamos a ${esc(g.tab)}`}</button></div>` : ""}
       <p class="hint">Toca una cara para bajarla. Mantén presionado para ver sus rasgos.</p>
-      <div class="grid" id="grid">
+      <div class="grid ${g.modo === "todos" && g.out.includes(g.tab) ? "isout" : ""}" id="grid">
         ${g.order.map(id => {
           const c = BY_ID[id];
-          return `<button class="card ${g.down.includes(id) ? "down" : ""}" data-id="${id}" style="--c: var(--${c.cat})" aria-label="${esc(c.n)}" aria-pressed="${g.down.includes(id)}">
+          return `<button class="card ${down.includes(id) ? "down" : ""}" data-id="${id}" style="--c: var(--${c.cat})" aria-label="${esc(c.n)}" aria-pressed="${down.includes(id)}">
             <span class="in">
               <span class="face">${AV[id]}<span class="nm"><span>${esc(c.n)}</span></span></span>
               <span class="back"><span>${esc(c.n)}</span></span>
@@ -600,7 +640,7 @@ function renderGame() {
   app.innerHTML = `
     <div class="topbar">
       <button class="iconbtn" data-act="leave" aria-label="Salir al inicio">${ICON.back}</button>
-      <div class="ttl"><b>${g.modo === "1v1" ? "1 vs 1" : "Uno vs todos"}</b><span>${esc(S.me)} · ${sub}</span></div>
+      <div class="ttl"><b>${MODE_TITLE[g.modo]}</b><span>${esc(S.me)} · ${sub}</span></div>
       ${holder ? "" : `<div class="counter" aria-live="polite"><b id="left">${left}</b><span>QUEDAN</span></div>`}
     </div>
     ${body}
@@ -617,7 +657,7 @@ function renderGallery() {
   app.innerHTML = `
     <div class="topbar">
       <button class="iconbtn" data-act="galback" aria-label="Regresar">${ICON.back}</button>
-      <div class="ttl"><b>Los 30 personajes</b><span>15 famosos · 15 del gym</span></div>
+      <div class="ttl"><b>Los ${CHARS.length} personajes</b><span>${NF} famosos · ${NG} del gym</span></div>
     </div>
     <div class="tabs" role="group" aria-label="Filtrar">
       <button data-act="tab" data-v="all" aria-pressed="${tab === "all"}">Todos</button>
@@ -674,7 +714,7 @@ function showDetail(id) {
 /* ===================== Acciones ===================== */
 function newGame(modo, extra) {
   S.game = Object.assign({ modo, order: shuffle(CHARS.map(c => c.id)), down: [], secret: null, ts: Date.now() }, extra);
-  if (modo === "1v1" || extra.rol === "tiene") S.game.secret = pick();
+  if (modo === "1v1" || modo === "todos" || extra.rol === "tiene") S.game.secret = pick();
   S.revealed = false;
   saveGame();
   S.screen = "game";
@@ -712,11 +752,40 @@ function startGroup() {
     });
 }
 
+function startAll() {
+  const others = S.players.filter(p => p !== S.me);
+  const sel = new Set(others);
+  sheet(`
+    <span class="eyebrow">Todos contra todos</span>
+    <h2>¿Quiénes juegan?</h2>
+    <p>Cada quien abre este modo en su cel. A todos les toca un personaje secreto y tienen un tablero para cada rival. Por turnos, le preguntas algo a quien tú quieras. Si adivinan tu personaje, quedas fuera. El último que quede gana.</p>
+    <div class="chips">${others.map(p => `<button class="chip" data-s="tog" data-v="${esc(p)}" aria-pressed="true">${esc(p)}</button>`).join("")}</div>
+    <div class="opts">
+      <button class="btn primary block" data-s="go">Repartir personajes</button>
+      <button class="btn block" data-s="close">Cancelar</button>
+    </div>`,
+    (act, btn) => {
+      if (act === "close") return closeSheet();
+      if (act === "tog") {
+        const v = btn.dataset.v;
+        if (sel.has(v)) sel.delete(v); else sel.add(v);
+        btn.setAttribute("aria-pressed", String(sel.has(v)));
+        return;
+      }
+      if (!sel.size) return toast("Elige al menos a un rival.");
+      const rivales = others.filter(p => sel.has(p));
+      closeSheet(); newGame("todos", { rivales, boards: {}, out: [], tab: rivales[0] });
+    });
+}
+
 function finish() {
   const g = S.game;
   const holder = g.modo === "grupal" && g.rol === "tiene";
-  const winLabel = holder ? "Gané: nadie adivinó" : (g.modo === "1v1" ? `Gané yo, no ${g.rival}` : "Gané: adiviné primero");
-  const loseLabel = holder ? "Alguien adivinó" : "Perdí";
+  const winLabel = holder ? "Gané: nadie adivinó"
+    : g.modo === "1v1" ? `Gané yo, no ${g.rival}`
+    : g.modo === "todos" ? "Gané: fui el último en pie"
+    : "Gané: adiviné primero";
+  const loseLabel = holder ? "Alguien adivinó" : g.modo === "todos" ? "Me adivinaron" : "Perdí";
   sheet(`
     <span class="eyebrow">Fin de la partida</span>
     <h2>¿Cómo te fue?</h2>
@@ -738,7 +807,7 @@ function endGame() { S.game = null; saveGame(); S.screen = "home"; render(); win
 
 async function recordWin() {
   const g = S.game;
-  const rec = { ganador: S.me, rival: g.modo === "1v1" ? g.rival : null, modo: g.modo, personaje: g.secret || null, ts: Date.now() };
+  const rec = { ganador: S.me, rival: g.modo === "1v1" ? g.rival : null, rivales: g.modo === "todos" ? g.rivales : null, modo: g.modo, personaje: g.secret || null, ts: Date.now() };
   endGame();
   if (S.shared && DB) {
     try {
@@ -791,12 +860,14 @@ app.addEventListener("click", e => {
   if (suppressClick) { suppressClick = false; return; }
   const card = e.target.closest(".card");
   if (card && S.game) {
-    const id = card.dataset.id, g = S.game;
-    const i = g.down.indexOf(id);
-    if (i >= 0) g.down.splice(i, 1); else g.down.push(id);
+    const id = card.dataset.id, g = S.game, down = curDown();
+    const i = down.indexOf(id);
+    if (i >= 0) down.splice(i, 1); else down.push(id);
     card.classList.toggle("down", i < 0);
     card.setAttribute("aria-pressed", String(i < 0));
-    const l = $("#left"); if (l) l.textContent = g.order.length - g.down.length;
+    const l = $("#left"); if (l) l.textContent = g.order.length - down.length;
+    const ts = document.querySelector('.rtabs [aria-selected="true"]:not(.out) span');
+    if (ts) ts.textContent = "Quedan " + (g.order.length - down.length);
     saveGame();
     return;
   }
@@ -807,6 +878,19 @@ app.addEventListener("click", e => {
   else if (act === "names") editNames();
   else if (act === "start1v1") start1v1();
   else if (act === "startGroup") startGroup();
+  else if (act === "startAll") startAll();
+  else if (act === "rtab") { S.game.tab = el.dataset.v; saveGame(); render(); }
+  else if (act === "rout") {
+    const g = S.game, r = g.tab, k = g.out.indexOf(r);
+    if (k >= 0) g.out.splice(k, 1);
+    else {
+      g.out.push(r);
+      const next = g.rivales.find(x => !g.out.includes(x));
+      if (next) g.tab = next;
+      toast(next ? `${r} queda fuera.` : `Ya adivinaste a todos. Si sigues en pie, ¡ganaste!`);
+    }
+    saveGame(); render();
+  }
   else if (act === "gallery") { S.prev = S.screen; S.screen = "gallery"; render(); window.scrollTo(0, 0); }
   else if (act === "galback") { S.screen = S.prev === "game" && S.game ? "game" : "home"; render(); window.scrollTo(0, 0); }
   else if (act === "tab") { S.galTab = el.dataset.v; render(); }
@@ -820,7 +904,7 @@ app.addEventListener("click", e => {
     clearTimeout(revealTimer);
     if (S.revealed) revealTimer = setTimeout(() => { S.revealed = false; if (S.screen === "game") render(); }, 5000);
   }
-  else if (act === "resetboard") { S.game.down = []; saveGame(); render(); }
+  else if (act === "resetboard") { curDown().length = 0; saveGame(); render(); }
   else if (act === "newsecret") { S.game.secret = pick(); saveGame(); render(); toast("Nuevo personaje secreto."); }
   else if (act === "finish") finish();
 });
