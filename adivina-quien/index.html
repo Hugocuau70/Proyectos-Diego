@@ -322,6 +322,12 @@ const BY_ID = Object.fromEntries(CHARS.map(c => [c.id, c]));
 const DEFAULT_PLAYERS = ["Yordi", "Richi", "Pau", "Jugador 4"];
 const NF = CHARS.filter(c => c.cat === "fam").length, NG = CHARS.length - NF;
 const MODE_TXT = { "1v1": "1 vs 1", grupal: "Grupal", todos: "Todos contra todos" };
+const BULK = {
+  fam: { l: "famosos", f: c => c.cat === "fam", col: "var(--fam)" },
+  gym: { l: "los del gym", f: c => c.cat === "gym", col: "var(--gym)" },
+  H: { l: "hombres", f: c => c.t.s === "H", col: "var(--ink)" },
+  M: { l: "mujeres", f: c => c.t.s === "M", col: "var(--accent)" },
+};
 const MODE_TITLE = { "1v1": "1 vs 1", grupal: "Uno vs todos", todos: "Todos vs todos" };
 function joinNames(a) { return a.length <= 1 ? (a[0] || "") : a.slice(0, -1).join(", ") + " y " + a[a.length - 1]; }
 
@@ -645,10 +651,10 @@ function renderGame() {
       <div class="rbar"><span>Tablero para adivinar a <b>${esc(g.tab)}</b></span>
         <button class="linkbtn" data-act="rout">${g.out.includes(g.tab) ? "Regresarlo al juego" : `Ya adivinamos a ${esc(g.tab)}`}</button></div>` : ""}
       <div class="bulk">
-        ${["fam", "gym"].map(cat => {
-          const ids = g.order.filter(id => BY_ID[id].cat === cat);
+        ${Object.keys(BULK).map(k => {
+          const ids = g.order.filter(id => BULK[k].f(BY_ID[id]));
           const all = ids.every(id => down.includes(id));
-          return `<button data-act="bulk" data-v="${cat}" style="--c: var(--${cat})">${all ? "Subir" : "Bajar"} ${cat === "fam" ? "famosos" : "los del gym"}</button>`;
+          return `<button data-act="bulk" data-v="${k}" style="--c: ${BULK[k].col}">${all ? "Subir" : "Bajar"} ${BULK[k].l}</button>`;
         }).join("")}
       </div>
       <p class="hint">Toca una cara para bajarla. Mantén presionado para ver sus rasgos.</p>
@@ -944,8 +950,9 @@ app.addEventListener("click", e => {
   }
   else if (act === "resetboard") { curDown().length = 0; saveGame(); render(); }
   else if (act === "bulk") {
-    const cat = el.dataset.v, down = curDown();
-    const ids = S.game.order.filter(id => BY_ID[id].cat === cat);
+    const grp = BULK[el.dataset.v], down = curDown();
+    if (!grp) return;
+    const ids = S.game.order.filter(id => grp.f(BY_ID[id]));
     if (ids.every(id => down.includes(id))) {
       for (const id of ids) down.splice(down.indexOf(id), 1);
     } else {
